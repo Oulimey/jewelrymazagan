@@ -17,26 +17,29 @@ const Hero = () => {
   const wasPlayingReverseRef = useRef(false);
 
   useEffect(() => {
-    // Check for mobile device on mount
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        // Enable normal scrolling on mobile
+        document.body.style.overflow = 'auto';
+      } else {
+        // Reset video and scroll lock on desktop
+        if (videoRef.current) {
+          videoRef.current.currentTime = 0;
+        }
+        document.body.style.overflow = 'hidden';
+      }
     };
     
-    // Initial check
     checkMobile();
-    
-    // Add resize listener
     window.addEventListener('resize', checkMobile);
     
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const handleVideoError = () => {
-    setVideoError(true);
-  };
-
   const updateVideoTime = () => {
-    if (videoRef.current && isScrollingRef.current) {
+    if (videoRef.current && isScrollingRef.current && !isMobile) {
       const currentTime = videoRef.current.currentTime;
       const targetTime = scrollProgressRef.current * videoRef.current.duration;
       const smoothness = 0.1;
@@ -58,8 +61,8 @@ const Hero = () => {
   };
 
   useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    
+    if (isMobile) return; // Skip scroll handling on mobile
+
     const handleWheel = (e) => {
       const isScrollingUp = e.deltaY < 0;
       
@@ -123,30 +126,43 @@ const Hero = () => {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, []);
+  }, [isMobile]); // Added isMobile dependency
 
   useGSAP(() => {
-    gsap.set("#video-frame", {
-      clipPath: "polygon(14% 0, 72% 0, 88% 90%, 0 95%)",
-      borderRadius: "0% 0% 40% 10%",
-    });
-    
-    gsap.from("#video-frame", {
-      clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)",
-      borderRadius: "0% 0% 0% 0%",
-      ease: "power1.inOut",
-      scrollTrigger: {
-        trigger: "#video-frame",
-        start: "center center",
-        end: "bottom center",
-        scrub: true,
-      },
-    });
+    if (isMobile) {
+      // Simple animation for mobile
+      gsap.set("#video-frame", {
+        clipPath: "polygon(14% 0, 72% 0, 88% 90%, 0 95%)",
+        borderRadius: "0% 0% 40% 10%",
+      });
+    } else {
+      // Desktop animations
+      gsap.set("#video-frame", {
+        clipPath: "polygon(14% 0, 72% 0, 88% 90%, 0 95%)",
+        borderRadius: "0% 0% 40% 10%",
+      });
+      
+      gsap.from("#video-frame", {
+        clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)",
+        borderRadius: "0% 0% 0% 0%",
+        ease: "power1.inOut",
+        scrollTrigger: {
+          trigger: "#video-frame",
+          start: "center center",
+          end: "bottom center",
+          scrub: true,
+        },
+      });
 
-    if (videoRef.current) {
-      videoRef.current.currentTime = 0;
+      if (videoRef.current) {
+        videoRef.current.currentTime = 0;
+      }
     }
-  });
+  }, [isMobile]); // Added isMobile dependency
+
+  const handleVideoError = () => {
+    setVideoError(true);
+  };
 
   return (
     <div 
@@ -162,6 +178,8 @@ const Hero = () => {
             ref={videoRef}
             muted
             playsInline
+            autoPlay={isMobile} // Auto play on mobile
+            loop={isMobile} // Loop on mobile
             className="absolute left-0 top-0 size-full object-cover object-center"
             onError={handleVideoError}
             src={isMobile ? "videos/hero-1-small.mp4" : "videos/hero-1.mp4"}
