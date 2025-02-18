@@ -6,7 +6,6 @@ import { useRef, useState, useEffect } from "react";
 gsap.registerPlugin(ScrollTrigger);
 
 const Hero = () => {
-  const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const videoRef = useRef(null);
@@ -32,13 +31,8 @@ const Hero = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const handleVideoLoad = () => {
-    setLoading(false);
-  };
-
   const handleVideoError = () => {
     setVideoError(true);
-    setLoading(false);
   };
 
   const updateVideoTime = () => {
@@ -159,18 +153,6 @@ const Hero = () => {
       ref={containerRef}
       className="relative h-dvh w-screen overflow-x-hidden"
     >
-      {loading && (
-        <div className="flex-center absolute z-[100] h-dvh w-screen overflow-hidden bg-cream-50">
-          <div className="flex items-center justify-center">
-            <img 
-              src="img/logo.png" 
-              alt="Loading Logo"
-              className="h-auto w-40 animate-logo-fade"
-            />
-          </div>
-        </div>
-      )}
-      
       <div
         id="video-frame"
         className="relative z-10 h-dvh w-screen overflow-hidden rounded-lg bg-black"
@@ -181,7 +163,6 @@ const Hero = () => {
             muted
             playsInline
             className="absolute left-0 top-0 size-full object-cover object-center"
-            onLoadedData={handleVideoLoad}
             onError={handleVideoError}
             src={isMobile ? "videos/hero-1-small.mp4" : "videos/hero-1.mp4"}
           />
