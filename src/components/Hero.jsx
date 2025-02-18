@@ -7,7 +7,6 @@ gsap.registerPlugin(ScrollTrigger);
 
 const Hero = () => {
   const [loading, setLoading] = useState(true);
-  const [videoLoaded, setVideoLoaded] = useState(false);
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const scrollProgressRef = useRef(0);
@@ -18,28 +17,14 @@ const Hero = () => {
   const touchStartRef = useRef(0);
   const lastTouchYRef = useRef(0);
 
-  const handleVideoLoad = () => {
-    setVideoLoaded(true);
-  };
-
-  // Handle loading screen timing
+  // Simple 5-second timer for loading screen
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (videoLoaded) {
-        setLoading(false);
-      }
+      setLoading(false);
     }, 5000);
 
-    // If video loads after timer, wait for timer
-    if (videoLoaded) {
-      const videoTimer = setTimeout(() => {
-        setLoading(false);
-      }, 5000);
-      return () => clearTimeout(videoTimer);
-    }
-
     return () => clearTimeout(timer);
-  }, [videoLoaded]);
+  }, []);
 
   const updateVideoTime = () => {
     if (videoRef.current && isScrollingRef.current) {
@@ -208,7 +193,7 @@ const Hero = () => {
       className="relative h-dvh w-screen overflow-x-hidden"
     >
       {loading && (
-        <div className="flex-center fixed z-[100] h-dvh w-screen overflow-hidden bg-cream-50">
+        <div className="flex-center fixed inset-0 z-[100] h-[100dvh] w-screen overflow-hidden bg-cream-50">
           <div className="flex items-center justify-center">
             <img 
               src="img/logo.png" 
@@ -229,7 +214,6 @@ const Hero = () => {
           muted
           playsInline
           className="absolute left-0 top-0 size-full object-cover object-center"
-          onLoadedData={handleVideoLoad}
         />
 
         <h1 className="special-font hero-heading absolute bottom-5 right-5 z-40 text-cream-50">
