@@ -7,6 +7,7 @@ gsap.registerPlugin(ScrollTrigger);
 
 const Hero = () => {
   const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const scrollProgressRef = useRef(0);
@@ -16,6 +17,18 @@ const Hero = () => {
   const wasPlayingReverseRef = useRef(false);
   const touchStartRef = useRef(0);
   const lastTouchYRef = useRef(0);
+
+  // Check for mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Simple 5-second timer for loading screen
   useEffect(() => {
@@ -27,7 +40,7 @@ const Hero = () => {
   }, []);
 
   const updateVideoTime = () => {
-    if (videoRef.current && isScrollingRef.current) {
+    if (videoRef.current && isScrollingRef.current && !isMobile) {
       const currentTime = videoRef.current.currentTime;
       const targetTime = scrollProgressRef.current * videoRef.current.duration;
       const smoothness = 0.1;
@@ -49,9 +62,13 @@ const Hero = () => {
   };
 
   useEffect(() => {
-    document.body.style.overflow = 'hidden';
+    if (!isMobile) {
+      document.body.style.overflow = 'hidden';
+    }
     
     const handleWheel = (e) => {
+      if (isMobile) return true;
+      
       const isScrollingUp = e.deltaY < 0;
       
       if (isVideoCompleteRef.current && !isScrollingUp) {
@@ -88,11 +105,14 @@ const Hero = () => {
     };
 
     const handleTouchStart = (e) => {
+      if (isMobile) return;
       touchStartRef.current = e.touches[0].clientY;
       lastTouchYRef.current = e.touches[0].clientY;
     };
 
     const handleTouchMove = (e) => {
+      if (isMobile) return;
+      
       if (isVideoCompleteRef.current && e.touches[0].clientY < lastTouchYRef.current) {
         return true;
       }
@@ -126,12 +146,14 @@ const Hero = () => {
     };
 
     const handleTouchEnd = () => {
+      if (isMobile) return;
       if (!isVideoCompleteRef.current) {
         document.body.style.overflow = 'hidden';
       }
     };
 
     const handleScroll = () => {
+      if (isMobile) return;
       if (window.scrollY === 0) {
         if (isVideoCompleteRef.current) {
           scrollProgressRef.current = 1;
@@ -152,7 +174,9 @@ const Hero = () => {
     window.addEventListener('touchend', handleTouchEnd, { passive: false });
 
     return () => {
-      document.body.style.overflow = 'auto';
+      if (!isMobile) {
+        document.body.style.overflow = 'auto';
+      }
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('wheel', handleWheel);
       window.removeEventListener('touchstart', handleTouchStart);
@@ -162,7 +186,7 @@ const Hero = () => {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, []);
+  }, [isMobile]);
 
   useGSAP(() => {
     gsap.set("#video-frame", {
@@ -182,10 +206,10 @@ const Hero = () => {
       },
     });
 
-    if (videoRef.current) {
+    if (videoRef.current && !isMobile) {
       videoRef.current.currentTime = 0;
     }
-  });
+  }, [isMobile]);
 
   return (
     <div 
@@ -210,9 +234,11 @@ const Hero = () => {
       >
         <video
           ref={videoRef}
-          src="videos/hero-1.mp4"
+          src={isMobile ? "videos/hero-1-small.mp4" : "videos/hero-1.mp4"}
           muted
           playsInline
+          autoPlay={isMobile}
+          loop={isMobile}
           className="absolute left-0 top-0 size-full object-cover object-center"
         />
 
