@@ -7,6 +7,7 @@ gsap.registerPlugin(ScrollTrigger);
 
 const Hero = () => {
   const [loading, setLoading] = useState(true);
+  const [videoLoaded, setVideoLoaded] = useState(false);
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const scrollProgressRef = useRef(0);
@@ -18,8 +19,27 @@ const Hero = () => {
   const lastTouchYRef = useRef(0);
 
   const handleVideoLoad = () => {
-    setLoading(false);
+    setVideoLoaded(true);
   };
+
+  // Handle loading screen timing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (videoLoaded) {
+        setLoading(false);
+      }
+    }, 5000);
+
+    // If video loads after timer, wait for timer
+    if (videoLoaded) {
+      const videoTimer = setTimeout(() => {
+        setLoading(false);
+      }, 5000);
+      return () => clearTimeout(videoTimer);
+    }
+
+    return () => clearTimeout(timer);
+  }, [videoLoaded]);
 
   const updateVideoTime = () => {
     if (videoRef.current && isScrollingRef.current) {
@@ -188,7 +208,7 @@ const Hero = () => {
       className="relative h-dvh w-screen overflow-x-hidden"
     >
       {loading && (
-        <div className="flex-center absolute z-[100] h-dvh w-screen overflow-hidden bg-cream-50">
+        <div className="flex-center fixed z-[100] h-dvh w-screen overflow-hidden bg-cream-50">
           <div className="flex items-center justify-center">
             <img 
               src="img/logo.png" 
