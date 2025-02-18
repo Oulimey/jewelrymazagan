@@ -6,8 +6,7 @@ import { useRef, useState, useEffect } from "react";
 gsap.registerPlugin(ScrollTrigger);
 
 const Hero = () => {
-  const [isMobile, setIsMobile] = useState(false);
-  const [videoError, setVideoError] = useState(false);
+  const [loading, setLoading] = useState(true);
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const scrollProgressRef = useRef(0);
@@ -15,18 +14,12 @@ const Hero = () => {
   const animationFrameRef = useRef(null);
   const isVideoCompleteRef = useRef(false);
   const wasPlayingReverseRef = useRef(false);
-  const touchStartY = useRef(0);
+  const touchStartRef = useRef(0);
+  const lastTouchYRef = useRef(0);
 
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+  const handleVideoLoad = () => {
+    setLoading(false);
+  };
 
   const updateVideoTime = () => {
     if (videoRef.current && isScrollingRef.current) {
@@ -52,7 +45,7 @@ const Hero = () => {
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
-
+    
     const handleWheel = (e) => {
       const isScrollingUp = e.deltaY < 0;
       
@@ -72,48 +65,46 @@ const Hero = () => {
 
       e.preventDefault();
       
-      if (videoRef.current) {
-        if (window.scrollY === 0) {
-          const scrollSensitivity = isMobile ? 0.003 : 0.0015; // Increased sensitivity for mobile
-          const newProgress = Math.max(0, Math.min(1, 
-            scrollProgressRef.current + (e.deltaY * scrollSensitivity)
-          ));
+      if (videoRef.current && window.scrollY === 0) {
+        const scrollSensitivity = 0.0015;
+        const newProgress = Math.max(0, Math.min(1, 
+          scrollProgressRef.current + (e.deltaY * scrollSensitivity)
+        ));
 
-          scrollProgressRef.current = newProgress;
-          
-          if (!isScrollingRef.current) {
-            isScrollingRef.current = true;
-            animationFrameRef.current = requestAnimationFrame(updateVideoTime);
-          }
-
-          wasPlayingReverseRef.current = isScrollingUp;
+        scrollProgressRef.current = newProgress;
+        
+        if (!isScrollingRef.current) {
+          isScrollingRef.current = true;
+          animationFrameRef.current = requestAnimationFrame(updateVideoTime);
         }
+
+        wasPlayingReverseRef.current = isScrollingUp;
       }
     };
 
     const handleTouchStart = (e) => {
-      touchStartY.current = e.touches[0].clientY;
+      touchStartRef.current = e.touches[0].clientY;
+      lastTouchYRef.current = e.touches[0].clientY;
     };
 
     const handleTouchMove = (e) => {
-      if (!videoRef.current) return;
-
-      const touchDeltaY = touchStartY.current - e.touches[0].clientY;
-      
-      if (isVideoCompleteRef.current && touchDeltaY > 0) {
+      if (isVideoCompleteRef.current && e.touches[0].clientY < lastTouchYRef.current) {
         return true;
       }
 
-      if (window.scrollY > 0 && touchDeltaY < 0) {
+      if (window.scrollY > 0 && e.touches[0].clientY > lastTouchYRef.current) {
         return true;
       }
 
       e.preventDefault();
 
-      if (window.scrollY === 0) {
-        const scrollSensitivity = 0.003; // Adjusted for touch
+      const currentY = e.touches[0].clientY;
+      const deltaY = lastTouchYRef.current - currentY;
+      
+      if (videoRef.current && window.scrollY === 0) {
+        const touchSensitivity = 0.001;
         const newProgress = Math.max(0, Math.min(1,
-          scrollProgressRef.current + (touchDeltaY * scrollSensitivity)
+          scrollProgressRef.current + (deltaY * touchSensitivity)
         ));
 
         scrollProgressRef.current = newProgress;
@@ -123,10 +114,16 @@ const Hero = () => {
           animationFrameRef.current = requestAnimationFrame(updateVideoTime);
         }
 
-        wasPlayingReverseRef.current = touchDeltaY < 0;
+        wasPlayingReverseRef.current = deltaY < 0;
       }
 
-      touchStartY.current = e.touches[0].clientY;
+      lastTouchYRef.current = currentY;
+    };
+
+    const handleTouchEnd = () => {
+      if (!isVideoCompleteRef.current) {
+        document.body.style.overflow = 'hidden';
+      }
     };
 
     const handleScroll = () => {
@@ -145,8 +142,9 @@ const Hero = () => {
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     window.addEventListener('wheel', handleWheel, { passive: false });
-    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchstart', handleTouchStart, { passive: false });
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchend', handleTouchEnd, { passive: false });
 
     return () => {
       document.body.style.overflow = 'auto';
@@ -154,11 +152,12 @@ const Hero = () => {
       window.removeEventListener('wheel', handleWheel);
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [isMobile]);
+  }, []);
 
   useGSAP(() => {
     gsap.set("#video-frame", {
@@ -183,33 +182,35 @@ const Hero = () => {
     }
   });
 
-  const handleVideoError = () => {
-    setVideoError(true);
-  };
-
   return (
     <div 
       ref={containerRef}
       className="relative h-dvh w-screen overflow-x-hidden"
     >
+      {loading && (
+        <div className="flex-center absolute z-[100] h-dvh w-screen overflow-hidden bg-cream-50">
+          <div className="flex items-center justify-center">
+            <img 
+              src="img/logo.png" 
+              alt="Loading Logo"
+              className="h-auto w-40 animate-logo-fade"
+            />
+          </div>
+        </div>
+      )}
+      
       <div
         id="video-frame"
-        className="relative z-10 h-dvh w-screen overflow-hidden rounded-lg bg-black"
+        className="relative z-10 h-dvh w-screen overflow-hidden rounded-lg bg-blue-75"
       >
-        {!videoError ? (
-          <video
-            ref={videoRef}
-            muted
-            playsInline
-            className="absolute left-0 top-0 size-full object-cover object-center"
-            onError={handleVideoError}
-            src={isMobile ? "videos/hero-1-small.mp4" : "videos/hero-1.mp4"}
-          />
-        ) : (
-          <div className="flex-center absolute inset-0 bg-black text-cream-50">
-            <p>Error loading video</p>
-          </div>
-        )}
+        <video
+          ref={videoRef}
+          src="videos/hero-1.mp4"
+          muted
+          playsInline
+          className="absolute left-0 top-0 size-full object-cover object-center"
+          onLoadedData={handleVideoLoad}
+        />
 
         <h1 className="special-font hero-heading absolute bottom-5 right-5 z-40 text-cream-50">
           A DEC<b>A</b>DE OF C<b>O</b>DING
